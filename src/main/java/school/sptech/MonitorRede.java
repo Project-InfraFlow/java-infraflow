@@ -8,13 +8,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 public class MonitorRede {
+    private static double bytesEnviadosAnterior = 0;
+    private static double bytesRecebidosAnterior = 0;
+
     public static void main(String[] args) {
         Conexao conexao = new Conexao();
         JdbcTemplate template = new JdbcTemplate(conexao.getConexao());
         Looca looca = new Looca();
 
         System.out.println("Conectado com o banco Infraflow com sucesso!");
-
 
         Integer idEmpresa = 1;
 
@@ -37,7 +39,6 @@ public class MonitorRede {
                     ipv4Ativo = ip;
                     macAtivo = iface.getEnderecoMac();
                     ifaceAtiva = iface;
-
                     break;
                 }
             }
@@ -51,6 +52,9 @@ public class MonitorRede {
             System.out.println("\n Interface ativa: " + ifaceAtiva.getNomeExibicao());
             System.out.println("IPv4 ativo: " + ipv4Ativo);
             System.out.println("MAC: " + macAtivo);
+
+            bytesEnviadosAnterior = ifaceAtiva.getBytesEnviados();
+            bytesRecebidosAnterior = ifaceAtiva.getBytesRecebidos();
         }
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -59,24 +63,26 @@ public class MonitorRede {
             try {
                 String dataHora = LocalDateTime.now().format(formatter);
 
-                double bytesEnviados = ifaceAtiva.getBytesEnviados();
-                double bytesRecebidos = ifaceAtiva.getBytesRecebidos();
+                double bytesEnviadosAtual = ifaceAtiva.getBytesEnviados();
+                double bytesRecebidosAtual = ifaceAtiva.getBytesRecebidos();
 
-                template.update("INSERT INTO leitura (fk_id_componente, fk_id_maquina, dados_float, data_hora_captura,id_nucleo) VALUES (?, ?, ?, ?, ?)",
-                        1, idMaquina, bytesEnviados, dataHora, idNucleo);
+                double bytesEnviadosDiff = bytesEnviadosAtual - bytesEnviadosAnterior;
+                double bytesRecebidosDiff = bytesRecebidosAtual - bytesRecebidosAnterior;
 
-                template.update("INSERT INTO leitura (fk_id_componente, fk_id_maquina, dados_float, data_hora_captura,id_nucleo) VALUES (?, ?, ?, ?, ?)",
-                        2, idMaquina, bytesRecebidos, dataHora, idNucleo);
+                double mbpsEnviados = (bytesEnviadosDiff * 8) / 1000000;
+                double mbpsRecebidos = (bytesRecebidosDiff * 8) / 1000000;
 
-                template.update("INSERT INTO leitura (fk_id_componente, fk_id_maquina, dados_texto, data_hora_captura,id_nucleo) VALUES (?, ?, ?, ?, ?)",
-                        3, idMaquina, macAtivo, dataHora, idNucleo);
+                double mbpsTotal = mbpsEnviados + mbpsRecebidos;
 
-                template.update("INSERT INTO leitura (fk_id_componente, fk_id_maquina, dados_texto, data_hora_captura,id_nucleo) VALUES (?, ?, ?, ?, ?)",
-                        4, idMaquina, ipv4Ativo, dataHora, idNucleo);
+                template.update("INSERT INTO leitura (fk_id_componente, fk_id_maquina, dados_float, data_hora_captura, id_nucleo) VALUES (?, ?, ?, ?, ?)",
+                        4, idMaquina, mbpsTotal, dataHora, idNucleo);
 
-                System.out.println("Leituras inseridas para interface " + ifaceAtiva.getNomeExibicao());
+                System.out.println("Rede: " + String.format("%.2f", mbpsTotal) + " Mbps");
 
-                Thread.sleep(4000);
+                bytesEnviadosAnterior = bytesEnviadosAtual;
+                bytesRecebidosAnterior = bytesRecebidosAtual;
+
+                Thread.sleep(2000);
 
             } catch (Exception e) {
                 System.out.println("Erro ao coletar ou inserir dados: " + e.getMessage());
@@ -85,5 +91,4 @@ public class MonitorRede {
             }
         }
     }
-    }
-
+}
