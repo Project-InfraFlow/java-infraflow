@@ -14,7 +14,7 @@ public class MonitorRede {
     private static double bytesEnviadosAnterior = 0;
     private static double bytesRecebidosAnterior = 0;
     private static final String SLACK_WEBHOOK_URL =
-            "https://hooks.slack.com/services/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";
+            "https://hooks.slack.com/services/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";
     private static final String NOME_PORTICO =
             "Pórtico - INFRA-EDGE-01-Itápolis (SP-333)";
 
