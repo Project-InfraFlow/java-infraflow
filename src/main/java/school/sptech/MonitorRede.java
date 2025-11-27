@@ -14,7 +14,7 @@ public class MonitorRede {
     private static double bytesEnviadosAnterior = 0;
     private static double bytesRecebidosAnterior = 0;
     private static final String SLACK_WEBHOOK_URL =
-            "https://hooks.slack.com/services/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";
+            System.getenv("SLACK_WEBHOOK_URL");
     private static final String NOME_PORTICO =
             "Pórtico - INFRA-EDGE-01-Itápolis (SP-333)";
 
@@ -87,25 +87,33 @@ public class MonitorRede {
                 System.out.println("Rede: " + String.format("%.2f", mbpsTotal) + " Mbps");
 
                 if (mbpsTotal > 200.0) {
-                    enviarAlertaSlack(String.format(
+                    String mensagem = String.format(
                             "[CRÍTICO] Tráfego de rede acima de 200 Mbps no %s (id %d). Valor atual: %.2f Mbps.",
                             NOME_PORTICO, idMaquina, mbpsTotal
-                    ));
+                    );
+                    enviarAlertaSlack(mensagem);
+                    registrarAlertaBanco(template, 4, idMaquina, mbpsTotal, "CRÍTICO", "Rede em saturação: " + String.format("%.2f", mbpsTotal) + " Mbps");
                 } else if (mbpsTotal > 150.0) {
-                    enviarAlertaSlack(String.format(
+                    String mensagem = String.format(
                             "[ALTA] Tráfego de rede acima de 150 Mbps no %s (id %d). Valor atual: %.2f Mbps.",
                             NOME_PORTICO, idMaquina, mbpsTotal
-                    ));
+                    );
+                    enviarAlertaSlack(mensagem);
+                    registrarAlertaBanco(template, 4, idMaquina, mbpsTotal, "ALTO", "Rede em alta utilização: " + String.format("%.2f", mbpsTotal) + " Mbps");
                 } else if (mbpsTotal > 100.0) {
-                    enviarAlertaSlack(String.format(
+                    String mensagem = String.format(
                             "[ATENÇÃO] Tráfego de rede acima de 100 Mbps no %s (id %d). Valor atual: %.2f Mbps.",
                             NOME_PORTICO, idMaquina, mbpsTotal
-                    ));
+                    );
+                    enviarAlertaSlack(mensagem);
+                    registrarAlertaBanco(template, 4, idMaquina, mbpsTotal, "ATENÇÃO", "Rede com tráfego elevado: " + String.format("%.2f", mbpsTotal) + " Mbps");
                 } else if (mbpsTotal > 50.0) {
-                    enviarAlertaSlack(String.format(
+                    String mensagem = String.format(
                             "[MONITORAR] Tráfego de rede acima de 50 Mbps no %s (id %d). Valor atual: %.2f Mbps.",
                             NOME_PORTICO, idMaquina, mbpsTotal
-                    ));
+                    );
+                    enviarAlertaSlack(mensagem);
+                    registrarAlertaBanco(template, 4, idMaquina, mbpsTotal, "MONITORAR", "Rede com tráfego moderado: " + String.format("%.2f", mbpsTotal) + " Mbps");
                 }
 
                 bytesEnviadosAnterior = bytesEnviadosAtual;
@@ -118,6 +126,34 @@ public class MonitorRede {
                 e.printStackTrace();
                 break;
             }
+        }
+    }
+
+    private static void registrarAlertaBanco(JdbcTemplate template, Integer idComponente, Integer idMaquina,
+                                             Double valorAtual, String nivelGravidade, String descricao) {
+        try {
+            String dataHora = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+            template.update("INSERT INTO leitura (fk_id_componente, fk_id_maquina, dados_float, data_hora_captura) VALUES (?, ?, ?, ?)",
+                    idComponente, idMaquina, valorAtual, dataHora);
+
+            Integer idLeitura = template.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
+
+            Integer idParametroAlerta = template.queryForObject(
+                    "SELECT id_parametro_alerta FROM parametro_alerta LIMIT 1", Integer.class);
+
+            if (idParametroAlerta == null) {
+                template.update("INSERT INTO parametro_alerta (min, max) VALUES (0, 100)");
+                idParametroAlerta = template.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
+            }
+
+            template.update("INSERT INTO alerta (fk_id_leitura, fk_id_componente, fk_parametro_alerta, descricao, status_alerta) VALUES (?, ?, ?, ?, ?)",
+                    idLeitura, idComponente, idParametroAlerta, descricao, 1);
+
+            System.out.println("Alerta registrado no banco: " + descricao);
+
+        } catch (Exception e) {
+            System.out.println("Erro ao registrar alerta no banco: " + e.getMessage());
         }
     }
 
