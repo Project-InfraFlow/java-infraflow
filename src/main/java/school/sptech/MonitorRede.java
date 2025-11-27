@@ -13,7 +13,10 @@ import java.io.OutputStream;
 public class MonitorRede {
     private static double bytesEnviadosAnterior = 0;
     private static double bytesRecebidosAnterior = 0;
-    private static final String SLACK_WEBHOOK_URL = System.getenv("SLACK_WEBHOOK_URL");
+    private static final String SLACK_WEBHOOK_URL =
+            "https://hooks.slack.com/services/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";
+    private static final String NOME_PORTICO =
+            "Pórtico - INFRA-EDGE-01-Itápolis (SP-333)";
 
     public static void main(String[] args) {
         Conexao conexao = new Conexao();
@@ -83,10 +86,25 @@ public class MonitorRede {
 
                 System.out.println("Rede: " + String.format("%.2f", mbpsTotal) + " Mbps");
 
-                if (mbpsTotal > 100.0) {
+                if (mbpsTotal > 200.0) {
                     enviarAlertaSlack(String.format(
-                            "Alerta: tráfego de rede elevado na máquina %d. Valor atual: %.2f Mbps.",
-                            idMaquina, mbpsTotal
+                            "[CRÍTICO] Tráfego de rede acima de 200 Mbps no %s (id %d). Valor atual: %.2f Mbps.",
+                            NOME_PORTICO, idMaquina, mbpsTotal
+                    ));
+                } else if (mbpsTotal > 150.0) {
+                    enviarAlertaSlack(String.format(
+                            "[ALTA] Tráfego de rede acima de 150 Mbps no %s (id %d). Valor atual: %.2f Mbps.",
+                            NOME_PORTICO, idMaquina, mbpsTotal
+                    ));
+                } else if (mbpsTotal > 100.0) {
+                    enviarAlertaSlack(String.format(
+                            "[ATENÇÃO] Tráfego de rede acima de 100 Mbps no %s (id %d). Valor atual: %.2f Mbps.",
+                            NOME_PORTICO, idMaquina, mbpsTotal
+                    ));
+                } else if (mbpsTotal > 50.0) {
+                    enviarAlertaSlack(String.format(
+                            "[MONITORAR] Tráfego de rede acima de 50 Mbps no %s (id %d). Valor atual: %.2f Mbps.",
+                            NOME_PORTICO, idMaquina, mbpsTotal
                     ));
                 }
 
