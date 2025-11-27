@@ -6,10 +6,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.io.OutputStream;
 
 public class MonitorRede {
     private static double bytesEnviadosAnterior = 0;
     private static double bytesRecebidosAnterior = 0;
+    private static final String SLACK_WEBHOOK_URL = System.getenv("SLACK_WEBHOOK_URL");
 
     public static void main(String[] args) {
         Conexao conexao = new Conexao();
@@ -79,6 +83,13 @@ public class MonitorRede {
 
                 System.out.println("Rede: " + String.format("%.2f", mbpsTotal) + " Mbps");
 
+                if (mbpsTotal > 100.0) {
+                    enviarAlertaSlack(String.format(
+                            "Alerta: tráfego de rede elevado na máquina %d. Valor atual: %.2f Mbps.",
+                            idMaquina, mbpsTotal
+                    ));
+                }
+
                 bytesEnviadosAnterior = bytesEnviadosAtual;
                 bytesRecebidosAnterior = bytesRecebidosAtual;
 
@@ -89,6 +100,35 @@ public class MonitorRede {
                 e.printStackTrace();
                 break;
             }
+        }
+    }
+
+    private static void enviarAlertaSlack(String mensagem) {
+        if (SLACK_WEBHOOK_URL == null || SLACK_WEBHOOK_URL.isBlank()) {
+            return;
+        }
+        try {
+            URL url = new URL(SLACK_WEBHOOK_URL);
+            HttpURLConnection conexao = (HttpURLConnection) url.openConnection();
+            conexao.setRequestMethod("POST");
+            conexao.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            conexao.setDoOutput(true);
+
+            String payload = "{\"text\":\"" + mensagem.replace("\"", "\\\"") + "\"}";
+
+            try (OutputStream os = conexao.getOutputStream()) {
+                byte[] input = payload.getBytes("utf-8");
+                os.write(input, 0, input.length);
+            }
+
+            int status = conexao.getResponseCode();
+            if (status < 200 || status >= 300) {
+                System.out.println("Falha ao enviar alerta ao Slack. Código HTTP: " + status);
+            }
+
+            conexao.disconnect();
+        } catch (Exception e) {
+            System.out.println("Erro ao enviar alerta ao Slack: " + e.getMessage());
         }
     }
 }
