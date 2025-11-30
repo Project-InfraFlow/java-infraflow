@@ -4,6 +4,8 @@ import com.github.britooo.looca.api.group.rede.RedeInterface;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.net.HttpURLConnection;
@@ -68,7 +70,8 @@ public class MonitorRede {
 
         while (true) {
             try {
-                String dataHora = LocalDateTime.now().format(formatter);
+                String dataHora = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
+                        .format(formatter);
 
                 double bytesEnviadosAtual = ifaceAtiva.getBytesEnviados();
                 double bytesRecebidosAtual = ifaceAtiva.getBytesRecebidos();
@@ -132,7 +135,8 @@ public class MonitorRede {
     private static void registrarAlertaBanco(JdbcTemplate template, Integer idComponente, Integer idMaquina,
                                              Double valorAtual, String nivelGravidade, String descricao) {
         try {
-            String dataHora = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            String dataHora = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
             template.update("INSERT INTO leitura (fk_id_componente, fk_id_maquina, dados_float, data_hora_captura) VALUES (?, ?, ?, ?)",
                     idComponente, idMaquina, valorAtual, dataHora);
