@@ -122,7 +122,7 @@ public class MonitorRede {
                 bytesEnviadosAnterior = bytesEnviadosAtual;
                 bytesRecebidosAnterior = bytesRecebidosAtual;
 
-                Thread.sleep(2000);
+                Thread.sleep(3000);
 
             } catch (Exception e) {
                 System.out.println("Erro ao coletar ou inserir dados: " + e.getMessage());
